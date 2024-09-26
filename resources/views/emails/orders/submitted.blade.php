@@ -43,7 +43,7 @@
 <body>
     <div class="container">
         <h1>New Order Submitted</h1>
-        <p>You have received a new order from <strong>{{ $order->provider->name }}</strong>.</p>
+        <p>You have received a new order from <strong>{{ $order->provider }}</strong>.</p>
         <p><strong>HMO Code:</strong> {{ $order->hmo_code }}</p>
         <p><strong>Encounter Date:</strong> {{ $order->encounter_date }}</p>
 
