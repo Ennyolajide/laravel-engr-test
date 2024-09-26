@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use Faker\Factory as Faker;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +21,16 @@ class HmoSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::table('hmos')->insert($this->hmos);
+        $faker = Faker::create();
+
+        $hmosWithEmails = array_map(function($hmo) use ($faker) {
+            return [
+                'name' => $hmo['name'],
+                'code' => $hmo['code'],
+                'email' => $faker->unique()->safeEmail, // Generate a random unique email
+            ];
+        }, $this->hmos);
+
+        DB::table('hmos')->insert($hmosWithEmails);
     }
 }
