@@ -19,7 +19,7 @@ class OrdersController extends Controller
         try {
             $request->validate([
                 'hmo_code' => 'required|string|max:255|exists:hmos,code', // Check if hmo_code exists in hmos table
-                'provider_id' => 'required|exists:providers,id',
+                'provider' => 'required|string|max:255',
                 'encounter_date' => 'required|date',
                 'items' => 'required|array|min:1',
                 'items.*.name' => 'required|string|max:255',
@@ -30,7 +30,7 @@ class OrdersController extends Controller
             // Return custom error response for validation failures
             return response()->json([
                 'message' => 'The given data was invalid.',
-                'errors' => $e->errors(), // Directly use the errors() method to get the validation error messages
+                'errors' => $e->errors(),
             ], 422);
         }
 
@@ -39,7 +39,7 @@ class OrdersController extends Controller
             $hmo = Hmo::where('code', $request->hmo_code)->firstOrFail();
 
             // Create the order
-            $order = Order::create($request->only(['hmo_code', 'provider_id', 'encounter_date']));
+            $order = Order::create($request->only(['hmo_code', 'provider', 'encounter_date']));
 
             // Create order items
             $order->items()->createMany(
