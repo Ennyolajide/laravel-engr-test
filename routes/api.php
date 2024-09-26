@@ -8,4 +8,4 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-Route::get('/orders/create', [OrdersController::class, 'store']);
+Route::post('/orders/create', [OrdersController::class, 'store']);
