@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
             $table->string('hmo_code');
-            $table->foreignId('provider');
+            $table->string('provider');
             $table->date('encounter_date');
             $table->timestamps();
         });
