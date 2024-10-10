@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('code')->unique();
             $table->string('email')->unique();
+            $table->string('batching_criteria')->default('month_of_encounter');
             $table->timestamps();
         });
     }
