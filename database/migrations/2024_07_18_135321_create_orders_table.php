@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('hmo_code');
             $table->string('provider');
             $table->date('encounter_date');
+            $table->foreignId('batch_id')->nullable()->constrained()->onDelete('set null'); // Foreign key to OrderBatch
             $table->timestamps();
         });
     }
