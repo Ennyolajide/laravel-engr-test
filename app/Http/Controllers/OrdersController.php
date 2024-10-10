@@ -7,32 +7,25 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Http\Request;
 use App\Mail\OrderSubmitted;
+use App\Services\OrderService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Log; // To log the error
+use App\Http\Requests\StoreOrderRequest;
 use Illuminate\Validation\ValidationException;
 
 class OrdersController extends Controller
 {
-    public function store(Request $request)
+    protected $orderService;
+
+    public function __construct(OrderService $orderService)
     {
-        // Validate incoming request
-        try {
-            $request->validate([
-                'hmo_code' => 'required|string|max:255|exists:hmos,code', // Check if hmo_code exists in hmos table
-                'provider' => 'required|string|max:255',
-                'encounter_date' => 'required|date',
-                'items' => 'required|array|min:1',
-                'items.*.name' => 'required|string|max:255',
-                'items.*.unit_price' => 'required|numeric|min:0',
-                'items.*.quantity' => 'required|integer|min:1',
-            ]);
-        } catch (ValidationException $e) {
-            // Return custom error response for validation failures
-            return response()->json([
-                'message' => 'The given data was invalid.',
-                'errors' => $e->errors(),
-            ], 422);
-        }
+        $this->orderService = $orderService;
+    }
+
+    public function store(StoreOrderRequest $request)
+    {
+        DB::beginTransaction(); // Begin a database transaction
 
         try {
             // Find the HMO and get its email
@@ -42,30 +35,39 @@ class OrdersController extends Controller
             $order = Order::create($request->only(['hmo_code', 'provider', 'encounter_date']));
 
             // Create order items
-            $order->items()->createMany(
-                collect($request->items)
-                    ->map(function ($item) {
-                        return [
-                            'name' => $item['name'],
-                            'unit_price' => $item['unit_price'],
-                            'quantity' => $item['quantity'],
-                            'total' => $item['unit_price'] * $item['quantity'],
-                        ];
-                    })
-                    ->toArray() // Convert the collection back to an array
-            );
+            $this->createOrderItems($order, $request->items);
+
+            // Add Order to Batch
+            $this->orderService->addOrderToBatch($order);
+
+            DB::commit(); // Commit the transaction
 
             // Send email notification to HMO
-
             Mail::to($hmo->email)->send(new OrderSubmitted($order));
 
             return response()->json(['message' => 'Order submitted successfully.'], 201);
 
         } catch (\Exception $e) {
+
+            DB::rollBack(); // Rollback the transaction
             // Log the error for debugging
             Log::error('Order submission failed: ' . $e->getMessage());
 
             return response()->json(['error' => 'Order submission failed: ' . $e->getMessage()], 500);
         }
+    }
+
+    protected function createOrderItems(Order $order, array $items)
+    {
+        $order->items()->createMany(
+            collect($items)->map(function ($item) {
+                return [
+                    'name' => $item['name'],
+                    'unit_price' => $item['unit_price'],
+                    'quantity' => $item['quantity'],
+                    'total' => $item['unit_price'] * $item['quantity'],
+                ];
+            })->toArray()
+        );
     }
 }
