@@ -2,18 +2,22 @@
 
 namespace Tests\Feature;
 
-use App\Models\Hmo;
-use App\Models\Order;
-use App\Models\OrderItem;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
-use App\Mail\OrderSubmitted;
+use App\Models\Batch;
+use App\Models\Order;
 use Faker\Factory as Faker;
+use App\Mail\OrderSubmitted;
+use App\Services\OrderService;
+use Tests\Traits\OrdersTestHelpers;
+use Illuminate\Support\Facades\Mail;
+
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
+
 
 class SubmitOrderApiTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, OrdersTestHelpers;
     protected $faker;
 
     protected function setUp(): void
@@ -94,6 +98,36 @@ class SubmitOrderApiTest extends TestCase
         $this->assertDatabaseCount('order_items', 0);
     }
 
+    /** @test */
+    public function it_assigns_order_to_batch_after_creation()
+    {
+        $orderData = $this->createOrderData();
+
+        // Send the request and assert response status
+        $response = $this->postJson('api/orders/create', $orderData);
+        $response->assertStatus(201);
+
+        // Retrieve the created order from the database
+        $order = Order::where('hmo_code', $orderData['hmo_code'])
+            ->where('provider', $orderData['provider'])
+            ->where('encounter_date', $orderData['encounter_date'])
+            ->first();
+
+        // Assert the order exists in the database
+        $this->assertNotNull($order);
+
+        // call to a private method for testing purposes | getBatchKey
+        $batchKey = $this->callPrivateMethod( new OrderService(), 'getBatchKey', [$order]);
+
+        // Assert that the batch key is not empty
+        $this->assertNotEmpty($batchKey);
+
+        // Assert that the batch has been created
+        $this->assertDatabaseHas('batches', ['batch_key' => $batchKey]);
+
+        // Assert that the order has been assigned to the batch
+        $this->assertEquals($order->batch_id, Batch::where('batch_key', $batchKey)->first()->id);
+    }
 
     /** @test */
     public function it_sends_notification_to_hmo()
@@ -107,25 +141,4 @@ class SubmitOrderApiTest extends TestCase
         Mail::assertSent(OrderSubmitted::class);
     }
 
-    protected function createOrderData()
-    {
-        // Prepare the order data
-        return [
-            'encounter_date' => $this->faker->date, // Generate a random date
-            'items' => $this->buildOrderItems()->toArray(), // Generate order items
-            'hmo_code' => Hmo::factory()->create()->code, // Use the HMO code created above
-            'provider' => 'Provide-'.$this->faker->lexify('?'), // Use the provider ID created above
-        ];
-    }
-
-    protected function buildOrderItems()
-    {
-        return collect(range(1, 5))->map(function () {
-            return [
-                'name' => $this->faker->word,
-                'quantity' => $this->faker->numberBetween(1, 10),
-                'unit_price' => $this->faker->randomFloat(2, 1, 100)
-            ];
-        });
-    }
 }
