@@ -9,7 +9,7 @@ class Order extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['hmo_code', 'encounter_date', 'provider'];
+    protected $fillable = ['hmo_code', 'encounter_date', 'provider', 'batch_id'];
 
 
     public function hmo()
@@ -20,5 +20,10 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function batch()
+    {
+        return $this->belongsTo(Batch::class);
     }
 }
