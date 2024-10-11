@@ -16,7 +16,7 @@ class OrderService
         $order->update(['batch_id' => $batch->id]);
     }
 
-    public function getBatchKey(Order $order): string
+    private function getBatchKey(Order $order): string
     {
         $criteria = $order->hmo->batching_criteria;
         // Determine the batch date based on the batching criteria
